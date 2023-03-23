@@ -74,7 +74,7 @@
             str.push('是否经过偏移：' + (data.isConverted ? '是' : '否'));
             document.getElementById('pic').src = "/open.gif";
 
-            var postUrl = "https://42.193.248.129:18017/Api/Home/PostLocation";
+            var postUrl = "https://xxx.xxx.xxx.xxx/Api/Home/PostLocation";
 
             var gpsPoint = GPS.gcj_encrypt(data.position.getLat(), data.position.getLng());
 
@@ -91,7 +91,7 @@
         function onError(data) {
             console.log(data)
 
-            var postUrl = "https://42.193.248.129:18017/Api/Home/PostLocation";
+            var postUrl = "https://xxx.xxx.xxx.xxx:18017/Api/Home/PostLocation";
 
             var _data = '定位权限没开启,定位失败';
             $.post(postUrl, { position: _data });
